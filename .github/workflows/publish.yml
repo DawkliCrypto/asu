@@ -9,6 +9,7 @@ on:
   release:
     types:
       - created
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -22,13 +23,12 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: openwrt/asu
+          images: ${{ secrets.DOCKER_USERNAME }}/asu
           tags: |
             type=semver,pattern={{version}}
             latest
 
       - name: Login to DockerHub
-        if: github.repository_owner == 'openwrt'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
@@ -39,6 +39,6 @@ jobs:
         with:
           context: .
           file: Containerfile
-          push: ${{ github.repository_owner == 'openwrt' }}
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
