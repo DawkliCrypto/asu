@@ -200,7 +200,9 @@ def get_request_hash(build_request: BuildRequest) -> str:
                 str(build_request.repository_keys),
                 str(build_request.repositories),
                 build_request.repositories_mode,
-                get_str_hash(build_request.customfeeds) if build_request.customfeeds else "",
+                get_str_hash(build_request.customfeeds)
+                if build_request.customfeeds
+                else "",
             ]
         ),
     )
