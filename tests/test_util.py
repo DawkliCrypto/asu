@@ -71,7 +71,7 @@ def test_get_request_hash():
 
     assert (
         get_request_hash(request)
-        == "525e19496bd8d47b9b63aa5fb2b2f5da467558893d39a42eb32210007fd57800"
+        == "b4dee2d7d698a9042b4945d0d4bf8bde04afc803cfefdf661e5b59ee200710b0"
     )
 
 
@@ -86,6 +86,26 @@ def test_get_request_hash_includes_repositories_mode():
     replace_hash = get_request_hash(BuildRequest(**base, repositories_mode="replace"))
 
     assert append_hash != replace_hash
+
+
+def test_get_request_hash_includes_customfeeds():
+    base = dict(
+        version="1.2.3",
+        target="testtarget/testsubtarget",
+        profile="testprofile",
+        customfeeds=None,
+    )
+    no_customfeeds_hash = get_request_hash(BuildRequest(**base))
+    customfeeds_hash = get_request_hash(
+        BuildRequest(
+            version=base["version"],
+            target=base["target"],
+            profile=base["profile"],
+            customfeeds="https://example.com/custom-feed\n",
+        )
+    )
+
+    assert no_customfeeds_hash != customfeeds_hash
 
 
 def test_get_request_hash_includes_filesystem():

@@ -61,6 +61,7 @@ def test_inject_files_no_extras():
         version="1.2.3",
         target="testtarget/testsubtarget",
         profile="testprofile",
+        customfeeds=None,
     )
     inject_files(container, request)
     container.put_archive.assert_not_called()
@@ -74,6 +75,7 @@ def test_inject_files_with_defaults(mock_detect):
         target="testtarget/testsubtarget",
         profile="testprofile",
         defaults="echo hello",
+        customfeeds=None,
     )
     inject_files(container, request)
     container.put_archive.assert_called_once()
@@ -93,8 +95,43 @@ def test_inject_files_with_repositories(mock_detect):
         target="testtarget/testsubtarget",
         profile="testprofile",
         repositories={},
+        customfeeds=None,
     )
     inject_files(container, request)
+    container.put_archive.assert_not_called()
+
+
+@patch("asu.build._detect_apk_mode", return_value=True)
+def test_inject_files_with_customfeeds(mock_detect):
+    container = MagicMock()
+    request = BuildRequest(
+        version="25.12.2",
+        target="testtarget/testsubtarget",
+        profile="testprofile",
+        customfeeds="https://example.com/custom-feed\n",
+    )
+    inject_files(container, request)
+
+    mock_detect.assert_called_once_with(container)
+    call_args = container.put_archive.call_args
+    files = _extract_tar(call_args[0][1])
+    assert files == {
+        "asu-files/etc/apk/repositories.d/customfeeds.list": "https://example.com/custom-feed\n"
+    }
+
+
+@patch("asu.build._detect_apk_mode", return_value=False)
+def test_inject_files_skips_customfeeds_for_opkg(mock_detect):
+    container = MagicMock()
+    request = BuildRequest(
+        version="23.05.5",
+        target="testtarget/testsubtarget",
+        profile="testprofile",
+        customfeeds="https://example.com/custom-feed\n",
+    )
+    inject_files(container, request)
+
+    mock_detect.assert_called_once_with(container)
     container.put_archive.assert_not_called()
 
 
@@ -107,6 +144,7 @@ def test_inject_files_with_usign_keys():
         target="testtarget/testsubtarget",
         profile="testprofile",
         repository_keys=[key_data],
+        customfeeds=None,
     )
     inject_files(container, request)
     container.put_archive.assert_called_once()
@@ -128,6 +166,7 @@ def test_inject_files_with_pem_keys():
         target="testtarget/testsubtarget",
         profile="testprofile",
         repository_keys=[pem_key],
+        customfeeds=None,
     )
     inject_files(container, request)
     container.put_archive.assert_called_once()
@@ -150,6 +189,7 @@ def test_inject_files_mixed_keys():
         target="testtarget/testsubtarget",
         profile="testprofile",
         repository_keys=[pem_key, usign_key],
+        customfeeds=None,
     )
     inject_files(container, request)
     container.put_archive.assert_called_once()
@@ -171,6 +211,7 @@ def test_inject_files_defaults_and_keys(mock_detect):
         profile="testprofile",
         defaults="echo test",
         repository_keys=[key_data],
+        customfeeds=None,
     )
     inject_files(container, request)
     assert container.put_archive.call_count == 2

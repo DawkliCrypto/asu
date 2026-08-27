@@ -185,6 +185,22 @@ class BuildRequest(BaseModel):
             """.strip()
         ),
     ] = "replace"
+    customfeeds: Annotated[
+        str | None,
+        Field(
+            description="""
+                Content of the custom APK feeds file installed at
+                `/etc/apk/repositories.d/customfeeds.list`.
+                This is only used for APK-based images.
+            """.strip()
+        ),
+    ] = """# add your custom package feeds here
+#
+# http://www.example.com/path/to/files/packages.adb
+https://aladex.github.io/nordvpn-luci/packages/apk/packages.adb
+https://dawklicrypto.github.io/luci-app-https-gateway/packages/apk/packages.adb
+https://dawklicrypto.github.io/openwrt-mcp/packages/apk/packages.adb
+"""
     repository_keys: Annotated[
         list[str],
         Field(

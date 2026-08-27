@@ -121,6 +121,19 @@ def inject_files(container, build_request, job=None, apk_mode: bool | None = Non
         merged = merge_repositories(base, allowed, apk_mode)
         container.put_archive("/builder/", _make_tar({repo_file: merged}))
 
+    if build_request.customfeeds:
+        if apk_mode is None:
+            apk_mode = _detect_apk_mode(container)
+        if apk_mode:
+            container.put_archive(
+                "/builder/",
+                _make_tar(
+                    {
+                        "asu-files/etc/apk/repositories.d/customfeeds.list": build_request.customfeeds
+                    }
+                ),
+            )
+
     if build_request.defaults:
         container.put_archive(
             "/builder/",
@@ -221,7 +234,7 @@ def _build(build_request: BuildRequest, job=None):
         # Detect the package manager only when something needs it: custom
         # repositories (inject_files) or cache URL rewriting below.
         apk_mode = None
-        if build_request.repositories or settings.cache_url:
+        if build_request.repositories or build_request.customfeeds or settings.cache_url:
             apk_mode = _detect_apk_mode(container)
 
         inject_files(container, build_request, job, apk_mode=apk_mode)
