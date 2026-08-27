@@ -1,0 +1,36 @@
+{
+  "name": "ASU development",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "remoteUser": "vscode",
+  "mounts": [
+    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind",
+    "source=${localWorkspaceFolder}/podman.sock,target=${containerWorkspaceFolder}/podman.sock,type=bind,consistency=cached"
+  ],
+  "forwardPorts": [8000, 6379],
+  "portsAttributes": {
+    "8000": {
+      "label": "ASU API",
+      "onAutoForward": "notify"
+    },
+    "6379": {
+      "label": "Redis"
+    }
+  },
+  "postCreateCommand": "uv sync --extra dev",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "charliermarsh.ruff"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "${containerWorkspaceFolder}/.venv/bin/python",
+        "python.testing.pytestEnabled": true,
+        "python.testing.pytestArgs": ["tests"]
+      }
+    }
+  }
+}
