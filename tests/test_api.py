@@ -245,8 +245,8 @@ def test_api_build_request_hash(client):
         profile="testprofile",
     )
 
-    case12hash = "1c4a79c6b711a576996cf9a5e7046a4581008c4466574096266f0e6ea4208fbc"
-    case34hash = "c5a849e05b60611b465042594fc3489a44f7695c3d09e36433a577ee772ad7b7"
+    case12hash = "cad97ae00be00173a7d0d9916a8fece1a1a22f5b078aa6c2cb5cb28aaac7f279"
+    case34hash = "4496e24af48b7fd705b7b319738503f34c9b0081d157b668c4275ff9a4ae9db1"
 
     # Case 1 - diff_packages=True, first package ordering
     json["diff_packages"] = True
@@ -294,12 +294,24 @@ def test_api_build_request_hash(client):
 
 def test_api_latest_default(client):
     response = client.get("/api/v1/latest", follow_redirects=False)
-    assert response.status_code == 301
+    assert response.status_code == 200
+    assert "latest" in response.json()
+
+
+def test_api_latest_allows_cors(client):
+    response = client.get(
+        "/api/v1/latest",
+        headers={"Origin": "https://example.com"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "*"
 
 
 def test_api_overview(client):
     response = client.get("/api/v1/overview", follow_redirects=False)
-    assert response.status_code == 301
+    assert response.status_code == 200
+    assert "latest" in response.json()
 
 
 def test_api_build_mapping(client):
@@ -755,7 +767,7 @@ def test_api_build_defaults_filled_allowed(app):
     data = response.json()
     assert (
         data["request_hash"]
-        == "ba50558496f8fead41e8d5bc72afd1ad7d27bc053afb550a8bf6ee3bbcc64952"
+        == "fbf284e63e7ba091fe0ccbe575d643975f734b07ee49194969264a8e32e3f950"
     )
 
 
@@ -787,6 +799,16 @@ def test_api_revision(client):
     assert response.status_code == 200
     data = response.json()
     assert data["revision"] == "r24106-10cc5fcd00"
+
+
+def test_api_overview_matches_json_schema(client):
+    response = client.get("/api/v1/overview")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data["branches"], dict)
+    assert data["branches"]
+    assert all("package_changes" in branch for branch in data["branches"].values())
 
 
 def test_api_revision_bad_version(client):

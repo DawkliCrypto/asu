@@ -1,6 +1,7 @@
 from urllib.parse import urlparse
 
 from asu.config import settings
+from asu.util import client_get
 
 
 def is_repo_allowed(repo_url: str, allow_list: list[str]) -> bool:
@@ -59,3 +60,36 @@ def validate_repos(repositories: dict[str, str]) -> dict[str, str]:
         for name, url in repositories.items()
         if is_repo_allowed(url, settings.repository_allow_list)
     }
+
+
+def get_customfeed_keys(customfeeds: str | None) -> list[str]:
+    """Fetch public APK keys published beside custom feed indexes."""
+    if not customfeeds:
+        return []
+
+    keys = []
+    for feed in customfeeds.splitlines():
+        feed = feed.strip()
+        if not feed or feed.startswith("#"):
+            continue
+        parsed = urlparse(feed)
+        parts = parsed.path.rstrip("/").split("/")
+        if len(parts) < 4 or parts[-3:] != ["packages", "apk", "packages.adb"]:
+            continue
+
+        repository = parts[-4]
+        base_path = "/".join(parts[:-3])
+        names = [repository]
+        if repository.startswith("luci-app-"):
+            names.append(repository.removeprefix("luci-app-"))
+
+        for name in names:
+            key_url = f"{parsed.scheme}://{parsed.netloc}{base_path}/keys/{name}-apk.pem"
+            response = client_get(key_url)
+            if response.status_code == 200 and response.text.startswith(
+                "-----BEGIN PUBLIC KEY-----"
+            ):
+                keys.append(response.text)
+                break
+
+    return keys

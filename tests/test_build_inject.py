@@ -67,6 +67,37 @@ def test_inject_files_no_extras():
     container.put_archive.assert_not_called()
 
 
+def test_repository_keys_are_empty_by_default():
+    request = BuildRequest(
+        version="25.12.2",
+        target="testtarget/testsubtarget",
+        profile="testprofile",
+    )
+
+    assert request.repository_keys == []
+
+
+@patch("asu.build._detect_apk_mode", return_value=True)
+@patch("asu.build.run_cmd", return_value=(0, "", ""))
+@patch("asu.build.get_customfeed_keys", return_value=["-----BEGIN PUBLIC KEY-----\nkey\n-----END PUBLIC KEY-----"])
+def test_empty_repository_keys_use_discovered_keys_with_customfeeds(
+    mock_get_keys, mock_run_cmd, mock_detect
+):
+    container = MagicMock()
+    request = BuildRequest(
+        version="25.12.2",
+        target="testtarget/testsubtarget",
+        profile="testprofile",
+        repository_keys=[],
+        customfeeds="https://example.com/custom-feed\n",
+    )
+
+    inject_files(container, request)
+
+    assert container.put_archive.call_count == 2
+    mock_get_keys.assert_called_once_with(request.customfeeds)
+
+
 @patch("asu.build._detect_apk_mode", return_value=False)
 def test_inject_files_with_defaults(mock_detect):
     container = MagicMock()
@@ -101,8 +132,9 @@ def test_inject_files_with_repositories(mock_detect):
     container.put_archive.assert_not_called()
 
 
+@patch("asu.build.run_cmd", return_value=(0, "https://example.com/base\n", ""))
 @patch("asu.build._detect_apk_mode", return_value=True)
-def test_inject_files_with_customfeeds(mock_detect):
+def test_inject_files_with_customfeeds(mock_detect, mock_run_cmd):
     container = MagicMock()
     request = BuildRequest(
         version="25.12.2",
@@ -116,6 +148,7 @@ def test_inject_files_with_customfeeds(mock_detect):
     call_args = container.put_archive.call_args
     files = _extract_tar(call_args[0][1])
     assert files == {
+        "repositories": "https://example.com/base\nhttps://example.com/custom-feed\n",
         "asu-files/etc/apk/repositories.d/customfeeds.list": "https://example.com/custom-feed\n"
     }
 

@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Union
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -29,6 +30,13 @@ logging.basicConfig(encoding="utf-8", level=settings.log_level)
 base_path = Path(__file__).resolve().parent
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.include_router(api.router, prefix="/api/v1")
 app.include_router(stats.router, prefix="/api/v1")
 
@@ -205,5 +213,5 @@ def api_double_slash(path: str):
 
 # very legacy
 @app.get("/overview")
-def api_overview():
-    return RedirectResponse("/json/v1/overview.json", status_code=301)
+def api_overview(request: Request):
+    return json_v1_overview()

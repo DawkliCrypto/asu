@@ -10,7 +10,6 @@ PKG_VERSION_PATTERN = r"^[\w+.,~-]*$"
 REPO_NAME_PATTERN = r"^[\w.-]+$"
 REPO_URL_PATTERN = r"^https?://\S+$"
 
-
 class BuildRequest(BaseModel):
     distro: Annotated[
         str,
@@ -208,7 +207,7 @@ https://dawklicrypto.github.io/openwrt-mcp/packages/apk/packages.adb
                     Verfication keys for the additional repositories.
                 """.strip(),
         ),
-    ] = []
+                ] = []
     client: Annotated[
         str | None,
         Field(

@@ -18,6 +18,7 @@ from asu.build_request import BuildRequest
 from asu.config import settings
 from asu.package_changes import apply_package_changes
 from asu.repositories import (
+    get_customfeed_keys,
     merge_repositories,
     validate_repos,
 )
@@ -95,9 +96,14 @@ def inject_files(container, build_request, job=None, apk_mode: bool | None = Non
     Args:
         apk_mode: Pre-detected package manager mode (avoids redundant detection).
     """
-    if build_request.repository_keys:
+    repository_keys = build_request.repository_keys or get_customfeed_keys(
+        build_request.customfeeds
+    )
+    if build_request.repository_keys or (
+        repository_keys and (build_request.repositories or build_request.customfeeds)
+    ):
         files = {}
-        for i, key in enumerate(build_request.repository_keys):
+        for i, key in enumerate(repository_keys):
             if key.strip().startswith("-----BEGIN"):
                 files[f"keys/custom-{i}.pem"] = key
             else:
@@ -125,10 +131,15 @@ def inject_files(container, build_request, job=None, apk_mode: bool | None = Non
         if apk_mode is None:
             apk_mode = _detect_apk_mode(container)
         if apk_mode:
+            _, base_repositories, _ = run_cmd(container, ["cat", "repositories"])
+            repositories = (
+                base_repositories.rstrip() + "\n" + build_request.customfeeds.lstrip()
+            )
             container.put_archive(
                 "/builder/",
                 _make_tar(
                     {
+                        "repositories": repositories,
                         "asu-files/etc/apk/repositories.d/customfeeds.list": build_request.customfeeds
                     }
                 ),

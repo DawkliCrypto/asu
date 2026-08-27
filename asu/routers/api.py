@@ -2,7 +2,7 @@ import logging
 from typing import Union
 
 from fastapi import APIRouter, Header, Request
-from fastapi.responses import RedirectResponse, Response
+from fastapi.responses import Response
 from rq.job import Job
 
 from asu.build import build
@@ -61,13 +61,41 @@ def api_v1_revision(
 
 
 @router.get("/latest")
-def api_latest():
-    return RedirectResponse("/json/v1/latest.json", status_code=301)
+def api_latest(request: Request):
+    reload_versions(request.app)
+    return {"latest": request.app.latest}
 
 
 @router.get("/overview")
-def api_v1_overview():
-    return RedirectResponse("/json/v1/overview.json", status_code=301)
+def api_v1_overview(request: Request):
+    reload_versions(request.app)
+    branches = {branch: dict(data) for branch, data in settings.branches.items()}
+    for branch in branches:
+        branches[branch]["name"] = branch
+        branches[branch]["versions"] = []
+        branches[branch].setdefault("package_changes", [])
+    for version in request.app.versions:
+        branch_name = get_branch(version)["name"]
+        if branch_name in branches:
+            branches[branch_name]["versions"].append(version)
+    for branch in list(branches):
+        version = branches[branch]["versions"][0] if branches[branch]["versions"] else None
+        if version is not None and not request.app.targets[version]:
+            reload_targets(request.app, version)
+        branches[branch]["targets"] = request.app.targets.get(version, [])
+    return {
+        "latest": request.app.latest,
+        "branches": branches,
+        "upstream_url": settings.upstream_url,
+        "server": {
+            "version": __import__("asu", fromlist=["__version__"]).__version__,
+            "contact": "mail@aparcar.org",
+            "allow_defaults": settings.allow_defaults,
+            "repository_allow_list": settings.repository_allow_list,
+            "max_custom_rootfs_size_mb": settings.max_custom_rootfs_size_mb,
+            "max_defaults_length": settings.max_defaults_length,
+        },
+    }
 
 
 def validation_failure(detail: str) -> tuple[dict[str, Union[str, int]], int]:

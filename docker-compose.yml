@@ -1,0 +1,38 @@
+services:
+  redis:
+    image: docker.io/redis/redis-stack-server:latest
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+
+  server:
+    build:
+      context: .
+      dockerfile: Containerfile
+    image: openwrt/asu:latest
+    restart: unless-stopped
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    command: uv run --no-project uvicorn --host 0.0.0.0 asu.main:app
+    volumes:
+      - public:/public
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+
+  worker:
+    image: openwrt/asu:latest
+    restart: unless-stopped
+    command: uv run --no-project rqworker --logging_level INFO
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ./podman.sock:/var/podman.sock
+      - public:/public
+    depends_on:
+      - redis
+
+volumes:
+  public:
+  redis-data:
